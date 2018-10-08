@@ -434,7 +434,7 @@ void
 fluid_thread_self_set_prio (int prio_level)
 {
 #ifdef __SWITCH__
-    u32 nx_priority = prio_level ? 0x3B : 0x2C;
+    u32 nx_priority = (prio_level >= FLUID_SYS_TIMER_HIGH_PRIO_LEVEL) ? 0x3B : 0x2C;
     svcSetThreadPriority(CUR_THREAD_HANDLE, nx_priority);
 #else
     struct sched_param priority;
@@ -967,7 +967,7 @@ fake_tss_delete(tss_t tss_id)
 
 // actually modify libnx's thrd_create to increase stack size
 
-#define THREAD_STACK_SIZE 0x100000
+#define THREAD_STACK_SIZE 0x80000
 
 typedef struct
 {
