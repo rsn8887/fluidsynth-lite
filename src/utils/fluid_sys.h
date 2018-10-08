@@ -332,6 +332,8 @@ typedef int (*fluid_thread_func_t)(void* data);
 #define fluid_thread_id_t               thrd_t              /* Data type for a thread ID */
 #define fluid_thread_get_id()           thrd_current()      /* Get unique "ID" for current thread */
 
+int hack_thrd_create(thrd_t *thr, thrd_start_t func, void *arg);
+
 fluid_thread_t* new_fluid_thread(const char *name, fluid_thread_func_t func, void *data,
                                  int prio_level, int detach);
 void delete_fluid_thread(fluid_thread_t* thread);
