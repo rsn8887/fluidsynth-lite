@@ -34,6 +34,10 @@
 #include "config_win32.h"
 #endif
 
+#if defined(__SWITCH__)
+#include "config_switch.h"
+#endif
+
 #if HAVE_STRING_H
 #include <string.h>
 #endif

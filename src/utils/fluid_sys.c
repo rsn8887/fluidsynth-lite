@@ -129,6 +129,7 @@ fluid_default_log_function(int level, char* message, void* data)
         fluid_log_config();
     }
 
+#if !defined(__SWITCH__) || defined(NXLINK_DEBUG)
     switch (level) {
     case FLUID_PANIC:
         FLUID_FPRINTF(out, "%s: panic: %s\n", fluid_libname, message);
@@ -152,6 +153,7 @@ fluid_default_log_function(int level, char* message, void* data)
         break;
     }
     fflush(out);
+#endif
 }
 
 /*
@@ -431,6 +433,10 @@ fluid_thread_self_set_prio (int prio_level)
 void
 fluid_thread_self_set_prio (int prio_level)
 {
+#ifdef __SWITCH__
+    u32 nx_priority = prio_level ? 0x3B : 0x2C;
+    svcSetThreadPriority(CUR_THREAD_HANDLE, nx_priority);
+#else
     struct sched_param priority;
 
     if (prio_level > 0) {
@@ -450,6 +456,7 @@ fluid_thread_self_set_prio (int prio_level)
 #endif
         FLUID_LOG(FLUID_WARN, "Failed to set thread to high priority");
     }
+#endif
 }
 
 #ifdef FPE_CHECK
@@ -639,6 +646,8 @@ new_fluid_thread (const char *name, fluid_thread_func_t func, void *data, int pr
 
 #if _WIN32
     *thread = CreateThread(NULL, 0, func, data, 0, NULL);
+#elif defined(__SWITCH__)
+    thrd_create(thread, func, data);
 #else
     pthread_create(thread, NULL, func, data);
 #endif
@@ -651,6 +660,8 @@ new_fluid_thread (const char *name, fluid_thread_func_t func, void *data, int pr
     if (detach) {
 #if _WIN32
         CloseHandle(*thread);
+#elif defined(__SWITCH__)
+        // thrd_detach(*thread); // unimpl'd
 #else
         pthread_detach(*thread);
 #endif
@@ -680,6 +691,8 @@ fluid_thread_join(fluid_thread_t* thread)
 #ifdef _WIN32
     WaitForSingleObject(*thread, INFINITE);
     CloseHandle(*thread);
+#elif defined(__SWITCH__)
+    thrd_join(*thread, NULL);
 #else
     pthread_join(*thread, NULL);
 #endif
@@ -913,3 +926,43 @@ fluid_ostream_printf (fluid_ostream_t out, char* format, ...)
 
     return write (out, buf, strlen (buf));
 }
+
+#ifdef __SWITCH__
+
+// fake tss for C11 threads
+
+__thread void *fake_tss[FAKE_TSS_MAX];
+static __thread int fake_tss_taken[FAKE_TSS_MAX] = { 0 };
+
+static inline u32
+fake_tss_find_key(void)
+{
+    for (int i = 0; i < FAKE_TSS_MAX; ++i)
+        if (!fake_tss_taken[i])
+            return i;
+    return FAKE_TSS_MAX;
+}
+
+int
+fake_tss_create(tss_t *tss_id)
+{
+    u32 key = fake_tss_find_key();
+    if (key >= FAKE_TSS_MAX)
+        return -1;
+    *tss_id = key;
+    fake_tss[key] = NULL;
+    fake_tss_taken[key] = 1;
+    return 0;
+}
+
+int
+fake_tss_delete(tss_t tss_id)
+{
+    if (tss_id >= FAKE_TSS_MAX)
+        return -1;
+    fake_tss[tss_id] = NULL;
+    fake_tss_taken[tss_id] = 0;
+    return 0;
+}
+
+#endif
