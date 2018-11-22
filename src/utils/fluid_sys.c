@@ -434,7 +434,7 @@ void
 fluid_thread_self_set_prio (int prio_level)
 {
 #ifdef __SWITCH__
-    u32 nx_priority = (prio_level >= FLUID_SYS_TIMER_HIGH_PRIO_LEVEL) ? 0x3B : 0x2C;
+    u32 nx_priority = (prio_level >= FLUID_SYS_TIMER_HIGH_PRIO_LEVEL) ? 0x2D : 0x3B;
     svcSetThreadPriority(CUR_THREAD_HANDLE, nx_priority);
 #else
     struct sched_param priority;
