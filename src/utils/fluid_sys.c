@@ -22,6 +22,8 @@
 #include <io.h>
 #elif defined(__APPLE__)
 #include "apple/timing_mach.h"
+#elif defined(__SWITCH__)
+#include <switch.h>
 #endif
 
 #include "fluid_sys.h"
@@ -646,8 +648,6 @@ new_fluid_thread (const char *name, fluid_thread_func_t func, void *data, int pr
 
 #if _WIN32
     *thread = CreateThread(NULL, 0, func, data, 0, NULL);
-#elif defined(__SWITCH__)
-    hack_thrd_create(thread, func, data);
 #else
     pthread_create(thread, NULL, func, data);
 #endif
@@ -660,9 +660,7 @@ new_fluid_thread (const char *name, fluid_thread_func_t func, void *data, int pr
     if (detach) {
 #if _WIN32
         CloseHandle(*thread);
-#elif defined(__SWITCH__)
-        // thrd_detach(*thread); // unimpl'd
-#else
+#elif !defined(__SWITCH__) // detach unsupported in libnx
         pthread_detach(*thread);
 #endif
     }
@@ -691,8 +689,6 @@ fluid_thread_join(fluid_thread_t* thread)
 #ifdef _WIN32
     WaitForSingleObject(*thread, INFINITE);
     CloseHandle(*thread);
-#elif defined(__SWITCH__)
-    thrd_join(*thread, NULL);
 #else
     pthread_join(*thread, NULL);
 #endif
@@ -926,123 +922,3 @@ fluid_ostream_printf (fluid_ostream_t out, char* format, ...)
 
     return write (out, buf, strlen (buf));
 }
-
-#ifdef __SWITCH__
-
-// fake tss for C11 threads
-
-__thread void *fake_tss[FAKE_TSS_MAX];
-static __thread int fake_tss_taken[FAKE_TSS_MAX] = { 0 };
-
-static inline u32
-fake_tss_find_key(void)
-{
-    for (int i = 0; i < FAKE_TSS_MAX; ++i)
-        if (!fake_tss_taken[i])
-            return i;
-    return FAKE_TSS_MAX;
-}
-
-int
-fake_tss_create(tss_t *tss_id)
-{
-    u32 key = fake_tss_find_key();
-    if (key >= FAKE_TSS_MAX)
-        return -1;
-    *tss_id = key;
-    fake_tss[key] = NULL;
-    fake_tss_taken[key] = 1;
-    return 0;
-}
-
-int
-fake_tss_delete(tss_t tss_id)
-{
-    if (tss_id >= FAKE_TSS_MAX)
-        return -1;
-    fake_tss[tss_id] = NULL;
-    fake_tss_taken[tss_id] = 0;
-    return 0;
-}
-
-// actually modify libnx's thrd_create to increase stack size
-
-#define THREAD_STACK_SIZE 0x80000
-
-typedef struct
-{
-    thrd_start_t func;
-    void* arg;
-
-    bool thread_started;
-    mtx_t mutex;
-    cnd_t cond;
-} __hack_thrd_start_info;
-
-static void __hack_thrd_entry(void* __arg)
-{
-    __hack_thrd_start_info* info = (__hack_thrd_start_info*)__arg;
-    thrd_start_t func = info->func;
-    void* arg = info->arg;
-
-    mtx_lock(&info->mutex);
-    info->thread_started = true;
-    cnd_signal(&info->cond);
-    mtx_unlock(&info->mutex);
-
-    int rc = func(arg);
-    thrd_exit(rc);
-}
-
-int hack_thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
-{
-    if (!thr || !func)
-        return thrd_error;
-
-    Result rc;
-    *thr = NULL;
-
-    u64 core_mask = 0;
-    rc = svcGetInfo(&core_mask, 0, CUR_PROCESS_HANDLE, 0);
-    if (R_FAILED(rc))
-        return thrd_error;
-
-    __thrd_t* t = (__thrd_t*)malloc(sizeof(__thrd_t));
-    if (!t)
-        return thrd_nomem;
-
-    __hack_thrd_start_info info;
-    info.func = func;
-    info.arg = arg;
-    info.thread_started = false;
-    mtx_init(&info.mutex, mtx_plain);
-    cnd_init(&info.cond);
-
-    rc = threadCreate(&t->thr, __hack_thrd_entry, &info, THREAD_STACK_SIZE, 0x3B, -2);
-    if (R_FAILED(rc))
-        goto _error1;
-
-    rc = svcSetThreadCoreMask(t->thr.handle, -1, core_mask);
-    if (R_FAILED(rc))
-        goto _error2;
-
-    rc = threadStart(&t->thr);
-    if (R_FAILED(rc))
-        goto _error2;
-
-    mtx_lock(&info.mutex);
-    while (!info.thread_started)
-        cnd_wait(&info.cond, &info.mutex);
-    mtx_unlock(&info.mutex);
-
-    *thr = t;
-    return thrd_success;
-
-_error2:
-    threadClose(&t->thr);
-_error1:
-    free(t);
-return thrd_error;
-}
-
-#endif

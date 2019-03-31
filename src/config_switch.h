@@ -56,7 +56,7 @@
 // #define HAVE_LIBMIDISHARE 0
 
 /* Define to 1 if you have the `pthread' library (-lpthread). */
-// #define HAVE_LIBPTHREAD 0
+#define HAVE_LIBPTHREAD 1
 
 /* Define to 1 if you have the <limits.h> header file. */
 #define HAVE_LIMITS_H 1
@@ -74,7 +74,7 @@
 #define HAVE_NETINET_TCP_H 1
 
 /* Define to 1 if you have the <pthread.h> header file. */
-// #define HAVE_PTHREAD_H 0
+#define HAVE_PTHREAD_H 1
 
 /* Define to 1 if you have the <stdarg.h> header file. */
 #define HAVE_STDARG_H 1
