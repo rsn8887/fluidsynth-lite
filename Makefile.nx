@@ -15,10 +15,13 @@ include $(DEVKITPRO)/libnx/switch_rules
 # DATA is a list of directories containing data files
 # INCLUDES is a list of directories containing header files
 #---------------------------------------------------------------------------------
-TARGET		:=	$(notdir $(CURDIR))
+TARGET		:=	fluidsynth
 SOURCES		:=
 DATA		:=	data
 INCLUDES	:=
+VERSION	:=	1.1.6
+
+DESTDIR	?=	$(PORTLIBS)
 
 SRC_FLUIDSYNTH	:=\
 	src/utils/fluid_conv.c \
@@ -154,6 +157,29 @@ dist-src:
 	@tar --exclude=*~ -cjf lib$(TARGET)-src.tar.bz2 include source Makefile Makefile.nx
 
 dist: dist-src dist-bin
+
+$(TARGET).pc: $(TARGET).pc.in
+	sed \
+	-e "s|@prefix@|$(PORTLIBS)|g" \
+	-e 's|@exec_prefix@|$$\{prefix\}|g' \
+	-e 's|@libdir@|$$\{exec_prefix\}/lib|g' \
+	-e 's|@includedir@|$$\{prefix\}/include|g' \
+	-e "s|@PKG_CONFIG_REQUIRES@||g" \
+	-e "s|@PACKAGE_VERSION@|$(VERSION)|g" \
+	-e "s|@LIBNAME@|$(TARGET)|g" \
+	-e "s|@PKG_CONFIG_LIBS@||g" \
+	-e "s|@PKG_CONFIG_CFLAGS@||g" \
+	-e "s|@PKG_CONFIG_PRIVATE_LIBS@||g" \
+	$(TARGET).pc.in > $(TARGET).pc
+
+.PHONY: install
+install: $(TARGET).pc all
+	install -d $(DESTDIR)/lib/
+	install -m 644 lib/lib$(TARGET).a $(DESTDIR)/lib/
+	install -d $(DESTDIR)/include/fluidsynth/
+	install -m 644 include/fluidsynth/*.h include/fluidsynth.h $(DESTDIR)/include/fluidsynth/
+	install -d $(DESTDIR)/lib/pkgconfig
+	install -m 644 $(TARGET).pc $(DESTDIR)/lib/pkgconfig
 
 #---------------------------------------------------------------------------------
 clean:

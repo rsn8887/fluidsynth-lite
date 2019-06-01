@@ -140,7 +140,7 @@
 #define STDC_HEADERS 1
 
 /* Version number of package */
-#define VERSION "1.1.6-nx"
+#define VERSION "1.1.6"
 
 /* Define to do all DSP in single floating point precision */
 #define WITH_FLOAT 1

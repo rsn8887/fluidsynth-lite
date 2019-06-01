@@ -31,7 +31,7 @@ extern "C" {
  * @brief Library version functions and defines
  */
 
-#define FLUIDSYNTH_VERSION       "1.1.6-nx"
+#define FLUIDSYNTH_VERSION       "1.1.6"
 #define FLUIDSYNTH_VERSION_MAJOR 1
 #define FLUIDSYNTH_VERSION_MINOR 1
 #define FLUIDSYNTH_VERSION_MICRO 6
