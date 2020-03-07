@@ -177,7 +177,8 @@ install: $(TARGET).pc all
 	install -d $(DESTDIR)/lib/
 	install -m 644 lib/lib$(TARGET).a $(DESTDIR)/lib/
 	install -d $(DESTDIR)/include/fluidsynth/
-	install -m 644 include/fluidsynth/*.h include/fluidsynth.h $(DESTDIR)/include/fluidsynth/
+	install -m 644 include/fluidsynth/*.h $(DESTDIR)/include/fluidsynth/
+	install -m 644 include/fluidsynth.h $(DESTDIR)/include/
 	install -d $(DESTDIR)/lib/pkgconfig
 	install -m 644 $(TARGET).pc $(DESTDIR)/lib/pkgconfig
 
